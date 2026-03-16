@@ -1,0 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const compat = new FlatCompat({
+  baseDirectory: path.dirname(fileURLToPath(import.meta.url)),
+});
+
+/** @type {import("eslint").Linter.Config[]} */
+const config = [...compat.extends("next/core-web-vitals")];
+
+export default config;
