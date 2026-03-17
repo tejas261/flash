@@ -29,35 +29,69 @@ export async function GET(
   }
 
   const subscriber = createRedisSubscriber();
+  const channel = getRestaurantOrdersChannel(restaurant.id);
   let heartbeat: NodeJS.Timeout | undefined;
-  let closed = false;
+  let cleanedUp = false;
+  let controllerClosed = false;
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+  let abortHandler: (() => void) | undefined;
+
+  function enqueue(chunk: Uint8Array) {
+    if (!controllerRef || controllerClosed || cleanedUp) {
+      return;
+    }
+
+    try {
+      controllerRef.enqueue(chunk);
+    } catch {
+      controllerClosed = true;
+      void cleanup(false);
+    }
+  }
+
+  async function cleanup(closeController: boolean) {
+    if (cleanedUp) {
+      return;
+    }
+
+    cleanedUp = true;
+
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
+
+    if (abortHandler) {
+      request.signal.removeEventListener("abort", abortHandler);
+    }
+
+    subscriber.removeAllListeners("message");
+
+    try {
+      await subscriber.unsubscribe(channel);
+    } catch {}
+
+    subscriber.disconnect();
+
+    if (closeController && controllerRef && !controllerClosed) {
+      try {
+        controllerRef.close();
+      } catch {}
+
+      controllerClosed = true;
+    }
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const channel = getRestaurantOrdersChannel(restaurant.id);
+      controllerRef = controller;
 
-      const closeStream = async () => {
-        if (closed) {
-          return;
-        }
-
-        closed = true;
-
-        if (heartbeat) {
-          clearInterval(heartbeat);
-        }
-
-        subscriber.removeAllListeners("message");
-        await subscriber.unsubscribe(channel);
-        subscriber.disconnect();
-        controller.close();
+      abortHandler = () => {
+        void cleanup(true);
       };
 
-      request.signal.addEventListener("abort", () => {
-        void closeStream();
-      });
+      request.signal.addEventListener("abort", abortHandler);
 
-      controller.enqueue(
+      enqueue(
         sseData({
           kind: "connected",
           restaurantId: restaurant.id,
@@ -67,29 +101,22 @@ export async function GET(
 
       await subscriber.subscribe(channel);
       subscriber.on("message", (_redisChannel, message) => {
-        if (closed) {
+        if (cleanedUp) {
           return;
         }
 
-        controller.enqueue(sseData(JSON.parse(message)));
+        enqueue(sseData(JSON.parse(message)));
       });
 
       heartbeat = setInterval(() => {
-        if (!closed) {
-          controller.enqueue(sseComment("keepalive"));
+        if (!cleanedUp) {
+          enqueue(sseComment("keepalive"));
         }
       }, 15000);
     },
     async cancel() {
-      const channel = getRestaurantOrdersChannel(restaurant.id);
-
-      if (heartbeat) {
-        clearInterval(heartbeat);
-      }
-
-      subscriber.removeAllListeners("message");
-      await subscriber.unsubscribe(channel);
-      subscriber.disconnect();
+      controllerClosed = true;
+      await cleanup(false);
     },
   });
 

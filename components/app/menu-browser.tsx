@@ -113,6 +113,10 @@ export function MenuBrowser({ restaurant }: { restaurant: PublicMenuData }) {
       }
 
       const session = (await sessionResponse.json()) as CheckoutResponse;
+      let paymentCompleted = false;
+      const reopenCheckout = () => {
+        setIsCheckoutOpen(true);
+      };
 
       const razorpay = new window.Razorpay({
         key: session.keyId,
@@ -129,46 +133,59 @@ export function MenuBrowser({ restaurant }: { restaurant: PublicMenuData }) {
           contact: customerPhone,
         },
         handler: async (response: Record<string, string>) => {
-          const verifyResponse = await fetch("/api/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              checkoutSessionId: session.checkoutSessionId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
+          try {
+            const verifyResponse = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                checkoutSessionId: session.checkoutSessionId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            });
 
-          const payload = (await verifyResponse.json()) as { orderId?: string; error?: string };
+            const payload = (await verifyResponse.json()) as { orderId?: string; error?: string };
 
-          if (!verifyResponse.ok || !payload.orderId) {
-            throw new Error(payload.error ?? "Payment verification failed.");
+            if (!verifyResponse.ok || !payload.orderId) {
+              throw new Error(payload.error ?? "Payment verification failed.");
+            }
+
+            paymentCompleted = true;
+            toast.success("Payment verified. Tracking your order now.");
+            setCart({});
+            startTransition(() => {
+              router.push(`/r/${restaurant.slug}/order/${payload.orderId}`);
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Payment verification failed.";
+            toast.error(message);
+            reopenCheckout();
+          } finally {
+            setIsPaying(false);
           }
-
-          toast.success("Payment verified. Tracking your order now.");
-          setCart({});
-          setIsCheckoutOpen(false);
-          startTransition(() => {
-            router.push(`/r/${restaurant.slug}/order/${payload.orderId}`);
-          });
         },
         modal: {
           ondismiss: () => {
             setIsPaying(false);
+            if (!paymentCompleted) {
+              reopenCheckout();
+            }
           },
         },
       });
 
+      setIsCheckoutOpen(false);
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
       razorpay.open();
+      return;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start payment.";
       toast.error(message);
+      setIsCheckoutOpen(true);
       setIsPaying(false);
       return;
     }
-
-    setIsPaying(false);
   }
 
   return (

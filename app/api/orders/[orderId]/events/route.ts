@@ -36,72 +36,103 @@ export async function GET(
   }
 
   const subscriber = createRedisSubscriber();
+  const channel = getOrderChannel(orderId);
   let heartbeat: NodeJS.Timeout | undefined;
-  let closed = false;
+  let cleanedUp = false;
+  let controllerClosed = false;
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+  let abortHandler: (() => void) | undefined;
+
+  function enqueue(chunk: Uint8Array) {
+    if (!controllerRef || controllerClosed || cleanedUp) {
+      return;
+    }
+
+    try {
+      controllerRef.enqueue(chunk);
+    } catch {
+      controllerClosed = true;
+      void cleanup(false);
+    }
+  }
+
+  async function cleanup(closeController: boolean) {
+    if (cleanedUp) {
+      return;
+    }
+
+    cleanedUp = true;
+
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
+
+    if (abortHandler) {
+      request.signal.removeEventListener("abort", abortHandler);
+    }
+
+    subscriber.removeAllListeners("message");
+
+    try {
+      await subscriber.unsubscribe(channel);
+    } catch {}
+
+    subscriber.disconnect();
+
+    if (closeController && controllerRef && !controllerClosed) {
+      try {
+        controllerRef.close();
+      } catch {}
+
+      controllerClosed = true;
+    }
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const closeStream = async () => {
-        if (closed) {
-          return;
-        }
+      controllerRef = controller;
 
-        closed = true;
-
-        if (heartbeat) {
-          clearInterval(heartbeat);
-        }
-
-        subscriber.removeAllListeners("message");
-        await subscriber.unsubscribe(getOrderChannel(orderId));
-        subscriber.disconnect();
-        controller.close();
+      abortHandler = () => {
+        void cleanup(true);
       };
 
-      request.signal.addEventListener("abort", () => {
-        void closeStream();
-      });
+      request.signal.addEventListener("abort", abortHandler);
 
-      controller.enqueue(
+      enqueue(
         ssePayload({
           status: order.status,
           updatedAt: order.statusUpdatedAt.toISOString(),
         }),
       );
 
-      await subscriber.subscribe(getOrderChannel(orderId));
+      await subscriber.subscribe(channel);
       subscriber.on("message", (_channel, message) => {
-        if (closed) {
+        if (cleanedUp) {
           return;
         }
 
         try {
           const parsed = JSON.parse(message) as { status: string; updatedAt: string };
-          controller.enqueue(
+          enqueue(
             ssePayload({
               status: parsed.status,
               updatedAt: parsed.updatedAt,
             }),
           );
         } catch {
-          controller.enqueue(sseComment("malformed-message"));
+          enqueue(sseComment("malformed-message"));
         }
       });
 
       heartbeat = setInterval(() => {
-        if (!closed) {
-          controller.enqueue(sseComment("keepalive"));
+        if (!cleanedUp) {
+          enqueue(sseComment("keepalive"));
         }
       }, 15000);
     },
     async cancel() {
-      if (heartbeat) {
-        clearInterval(heartbeat);
-      }
-
-      subscriber.removeAllListeners("message");
-      await subscriber.unsubscribe(getOrderChannel(orderId));
-      subscriber.disconnect();
+      controllerClosed = true;
+      await cleanup(false);
     },
   });
 

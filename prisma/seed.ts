@@ -1,8 +1,19 @@
+import "dotenv/config";
+
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import { CheckoutStatus, OrderStatus, PrismaClient, UserRole } from "@prisma/client";
+import { CheckoutStatus, OrderStatus, PrismaClient, UserRole } from "../generated/prisma/client";
 import { format } from "date-fns";
 
-const prisma = new PrismaClient();
+const SAMPLE_SLUGS = ["readybell", "demo-bistro"];
+const SAMPLE_RAZORPAY_ORDER_IDS = ["seed_order_ready", "seed_order_new"];
+const SAMPLE_RAZORPAY_PAYMENT_IDS = ["seed_payment_ready", "seed_payment_new"];
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: process.env.DATABASE_URL ?? "",
+  }),
+});
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "owner@flash.demo";
@@ -11,7 +22,9 @@ async function main() {
 
   await prisma.restaurant.deleteMany({
     where: {
-      slug: "demo-bistro",
+      slug: {
+        in: SAMPLE_SLUGS,
+      },
     },
   });
 
@@ -21,10 +34,27 @@ async function main() {
     },
   });
 
+  await prisma.checkoutSession.deleteMany({
+    where: {
+      OR: [
+        {
+          razorpayOrderId: {
+            in: SAMPLE_RAZORPAY_ORDER_IDS,
+          },
+        },
+        {
+          razorpayPaymentId: {
+            in: SAMPLE_RAZORPAY_PAYMENT_IDS,
+          },
+        },
+      ],
+    },
+  });
+
   const restaurant = await prisma.restaurant.create({
     data: {
-      name: "Demo Bistro",
-      slug: "demo-bistro",
+      name: "ReadyBell",
+      slug: "readybell",
       description: "Fast casual bowls, wraps, coffees, and live pickup tokens.",
       heroTitle: "Order in under a minute. Pickup without the queue.",
       heroDescription:
@@ -38,7 +68,7 @@ async function main() {
   await prisma.adminUser.create({
     data: {
       restaurantId: restaurant.id,
-      name: "Demo Owner",
+      name: "ReadyBell Owner",
       email: adminEmail,
       passwordHash,
       role: UserRole.ADMIN,

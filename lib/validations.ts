@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { z } from "zod";
 
 export const adminLoginSchema = z.object({

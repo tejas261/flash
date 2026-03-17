@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { format } from "date-fns";
 
 export async function generateSequentialToken(tx: Prisma.TransactionClient, restaurantId: string) {

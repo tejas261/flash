@@ -1,4 +1,4 @@
-import { CheckoutStatus, OrderStatus } from "@prisma/client";
+import { CheckoutStatus, OrderStatus } from "@/generated/prisma/enums";
 
 import { calculateOrderPricing } from "@/lib/money";
 import { db } from "@/lib/db";

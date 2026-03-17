@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { notFound } from "next/navigation";
 
 import { AdminNav } from "@/components/app/admin-nav";

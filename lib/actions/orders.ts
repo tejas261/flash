@@ -1,6 +1,6 @@
 "use server";
 
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { revalidatePath } from "next/cache";
 
 import { requireAdminSession } from "@/lib/auth";

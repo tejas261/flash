@@ -5,9 +5,9 @@ import QRCode from "qrcode";
 
 async function main() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3000";
-  const targetUrl = `${baseUrl}/r/demo-bistro`;
+  const targetUrl = `${baseUrl}/r/readybell`;
   const outputDir = path.join(process.cwd(), "public");
-  const outputPath = path.join(outputDir, "sample-demo-bistro-qr.svg");
+  const outputPath = path.join(outputDir, "sample-readybell-qr.svg");
 
   const svg = await QRCode.toString(targetUrl, {
     type: "svg",

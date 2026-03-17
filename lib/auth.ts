@@ -64,13 +64,11 @@ export async function getCurrentAdminSession() {
   });
 
   if (!session) {
-    cookieStore.delete(SESSION_COOKIE);
     return null;
   }
 
   if (isAfter(new Date(), session.expiresAt)) {
     await db.adminSession.delete({ where: { token } });
-    cookieStore.delete(SESSION_COOKIE);
     return null;
   }
 

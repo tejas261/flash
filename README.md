@@ -35,7 +35,7 @@ After seeding:
 
 - Admin email: `owner@flash.demo`
 - Admin password: `flash-admin-123`
-- Demo restaurant slug: `demo-bistro`
+- Sample restaurant slug: `readybell`
 
 You can override admin credentials with `ADMIN_EMAIL` and `ADMIN_PASSWORD` before running the seed.
 
@@ -108,12 +108,12 @@ npm run dev
 ## Sample URLs
 
 - Home: `/`
-- Public menu: `/r/demo-bistro`
+- Public menu: `/r/readybell`
 - Admin login: `/admin/login`
 - Admin orders: `/admin/orders`
 - Admin menu: `/admin/menu`
-- Ready token board: `/display/demo-bistro`
-- Dynamic QR SVG: `/api/restaurants/demo-bistro/qr`
+- Ready token board: `/display/readybell`
+- Dynamic QR SVG: `/api/restaurants/readybell/qr`
 
 ## Razorpay test mode setup
 
@@ -154,12 +154,12 @@ prisma/
   schema.prisma               Database schema
   seed.ts                     Sample seed
 scripts/
-  generate-sample-qr.ts       Writes `public/sample-demo-bistro-qr.svg`
+  generate-sample-qr.ts       Writes `public/sample-readybell-qr.svg`
 ```
 
 ## Ordering flow
 
-1. Guest scans the QR and opens `/r/demo-bistro`.
+1. Guest scans the QR and opens `/r/readybell`.
 2. Guest adds items to the cart and enters name/phone.
 3. Client creates a checkout session and a Razorpay order.
 4. Razorpay completes payment in test mode.
@@ -230,7 +230,7 @@ If you use migration files in CI:
 ## Manual smoke test checklist
 
 1. Seed the app and sign in to `/admin/login`.
-2. Open `/r/demo-bistro` and place a test order with Razorpay.
+2. Open `/r/readybell` and place a test order with Razorpay.
 3. Confirm redirect to the order tracking page and verify token generation.
 4. Open `/admin/orders` in a second tab and update the order status.
 5. Confirm the customer page updates live.

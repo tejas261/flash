@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "@/generated/prisma/enums";
 import { CheckCheck, ChefHat, CircleDot, PartyPopper } from "lucide-react";
 
 import { ORDER_STATUS_LABELS, ORDER_STATUS_STEPS } from "@/lib/constants";

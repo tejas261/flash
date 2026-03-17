@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { CheckoutStatus } from "@prisma/client";
+import { CheckoutStatus } from "@/generated/prisma/enums";
 
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";

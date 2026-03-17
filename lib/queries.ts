@@ -1,51 +1,68 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { cache } from "react";
 
 import { db } from "@/lib/db";
+import { getRestaurantSlugCandidates } from "@/lib/sample-restaurant";
 
 export const getRestaurantBySlug = cache(async (slug: string) => {
-  return db.restaurant.findUnique({
-    where: { slug },
-  });
+  for (const candidate of getRestaurantSlugCandidates(slug)) {
+    const restaurant = await db.restaurant.findUnique({
+      where: { slug: candidate },
+    });
+
+    if (restaurant) {
+      return restaurant;
+    }
+  }
+
+  return null;
 });
 
 export const getPublicRestaurantMenu = cache(async (slug: string) => {
-  return db.restaurant.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      description: true,
-      heroTitle: true,
-      heroDescription: true,
-      currency: true,
-      themeColor: true,
-      supportPhone: true,
-      categories: {
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        select: {
-          id: true,
-          name: true,
-          sortOrder: true,
-          items: {
-            where: { isAvailable: true },
-            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              imageUrl: true,
-              price: true,
-              spiceLevel: true,
-              isFeatured: true,
+  for (const candidate of getRestaurantSlugCandidates(slug)) {
+    const restaurant = await db.restaurant.findUnique({
+      where: { slug: candidate },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        heroTitle: true,
+        heroDescription: true,
+        currency: true,
+        themeColor: true,
+        supportPhone: true,
+        categories: {
+          where: { isActive: true },
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            sortOrder: true,
+            items: {
+              where: { isAvailable: true },
+              orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                imageUrl: true,
+                price: true,
+                spiceLevel: true,
+                isFeatured: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
+
+    if (restaurant) {
+      return restaurant;
+    }
+  }
+
+  return null;
 });
 
 export async function getAdminMenuData(restaurantId: string) {
@@ -112,28 +129,36 @@ export const getOrderTrackingData = cache(async (orderId: string) => {
 });
 
 export async function getReadyOrdersBySlug(slug: string) {
-  return db.restaurant.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      orders: {
-        where: {
-          status: {
-            in: [OrderStatus.READY, OrderStatus.COMPLETED],
+  for (const candidate of getRestaurantSlugCandidates(slug)) {
+    const restaurant = await db.restaurant.findUnique({
+      where: { slug: candidate },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        orders: {
+          where: {
+            status: {
+              in: [OrderStatus.READY, OrderStatus.COMPLETED],
+            },
+          },
+          orderBy: [{ statusUpdatedAt: "desc" }],
+          take: 24,
+          select: {
+            id: true,
+            tokenNumber: true,
+            status: true,
+            customerName: true,
+            statusUpdatedAt: true,
           },
         },
-        orderBy: [{ statusUpdatedAt: "desc" }],
-        take: 24,
-        select: {
-          id: true,
-          tokenNumber: true,
-          status: true,
-          customerName: true,
-          statusUpdatedAt: true,
-        },
       },
-    },
-  });
+    });
+
+    if (restaurant) {
+      return restaurant;
+    }
+  }
+
+  return null;
 }

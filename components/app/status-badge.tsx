@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "@/generated/prisma/enums";
 
 import { Badge } from "@/components/ui/badge";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";

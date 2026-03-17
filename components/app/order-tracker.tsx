@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BellRing, PhoneCall } from "lucide-react";
 
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 
 import type { OrderTrackingPayload } from "@/lib/types";
 import { formatCurrency, formatPhone } from "@/lib/utils";

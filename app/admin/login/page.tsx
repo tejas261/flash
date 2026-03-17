@@ -19,7 +19,7 @@ export default async function AdminLoginPage() {
               Manage menu updates, kitchen flow, and ready tokens from one dashboard.
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground">
-              Seed data includes a demo owner account. Sign in to manage the sample self-service restaurant.
+              Seed data includes a ReadyBell owner account. Sign in to manage the sample self-service restaurant.
             </p>
           </div>
         </section>
